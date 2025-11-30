@@ -10,7 +10,7 @@ from airflow.utils.dates import days_ago
 
 log = logging.getLogger(__name__)
 
-FASTAPI_HOST = os.environ.get("FASTAPI_HOST", "air_quality_app")
+FASTAPI_HOST = os.environ.get("FASTAPI_HOST", "app")
 FASTAPI_PORT = int(os.environ.get("FASTAPI_PORT", 8081))
 FASTAPI_BASE = f"http://{FASTAPI_HOST}:{FASTAPI_PORT}"
 
@@ -19,6 +19,7 @@ DEFAULT_ARGS = {
     "retries": 1,
     "retry_delay": timedelta(minutes=2),
 }
+
 
 def call_generate(n=50, timeout=30, **context):
     url = f"{FASTAPI_BASE}/generate"
@@ -32,6 +33,7 @@ def call_generate(n=50, timeout=30, **context):
     except Exception as e:
         log.exception("Failed to call FastAPI /generate: %s", e)
         raise
+
 
 with DAG(
     dag_id="ingest_to_mongo",

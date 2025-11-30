@@ -18,12 +18,14 @@ client = None
 db = None
 collection = None
 
+
 def make_mongo_uri():
     MONGO_HOST = os.environ.get("MONGO_HOST", "mongodb")
     MONGO_PORT = int(os.environ.get("MONGO_PORT", 27017))
     MONGO_USER = os.environ.get("MONGO_USER")
     MONGO_PASSWORD = os.environ.get("MONGO_PASSWORD")
     return f"mongodb://{MONGO_USER}:{MONGO_PASSWORD}@{MONGO_HOST}:{MONGO_PORT}/?authSource=admin"
+
 
 def init_mongo_client(retries=10, delay=3):
     global client, db, collection
@@ -42,6 +44,7 @@ def init_mongo_client(retries=10, delay=3):
             _time.sleep(delay)
     raise RuntimeError("Could not connect to MongoDB after retries")
 
+
 def generator_loop():
     while True:
         days_before = random.randint(1, 120)
@@ -57,7 +60,7 @@ def generator_loop():
             "departure": (datetime.utcnow() + timedelta(days=days_before)).isoformat(),
             "collected_ts": datetime.utcnow(),
             "days_before": days_before,
-            "price": price
+            "price": price,
         }
         try:
             collection.insert_one(doc)
@@ -65,26 +68,33 @@ def generator_loop():
             print("Insert error", e)
         time.sleep(2)
 
+
 @app.on_event("startup")
 def startup():
     init_mongo_client(retries=20, delay=2)
     Thread(target=generator_loop, daemon=True).start()
 
+
 @app.get("/routes")
 def get_routes():
     return {"routes": ROUTES}
+
 
 @app.get("/prices")
 def get_prices(from_: str, to: str, date: str):
     route = f"{from_}-{to}"
     docs = list(collection.find({"route": route}).sort("collected_ts", -1).limit(20))
 
-    return [{
-        "carrier": d["carrier"],
-        "price": d["price"],
-        "departure": d["departure"],
-        "days_before": d["days_before"]
-    } for d in docs]
+    return [
+        {
+            "carrier": d["carrier"],
+            "price": d["price"],
+            "departure": d["departure"],
+            "days_before": d["days_before"],
+        }
+        for d in docs
+    ]
+
 
 @app.get("/analytics/avg-price")
 def avg_price(route: str):
@@ -94,8 +104,9 @@ def avg_price(route: str):
     return {
         "route": route,
         "avg_price": round(mean([d["price"] for d in docs]), 2),
-        "records": len(docs)
+        "records": len(docs),
     }
+
 
 @app.get("/analytics/best-time")
 def best_time(route: str):
@@ -116,8 +127,9 @@ def best_time(route: str):
         "best_buy_in_days": best_days,
         "expected_price": avg_by_days[best_days],
         "price_by_days_before": avg_by_days,
-        "recommendation": f"Лучше покупать за {best_days} дней до вылета"
+        "recommendation": f"Лучше покупать за {best_days} дней до вылета",
     }
+
 
 @app.get("/stats")
 def stats():
@@ -130,8 +142,9 @@ def stats():
         "records": collection.count_documents({}),
         "avg_price_all": avg,
         "min_price": min_price,
-        "routes": list(set(d["route"] for d in docs))
+        "routes": list(set(d["route"] for d in docs)),
     }
+
 
 @app.post("/generate")
 def generate_now(n: int = Query(20, ge=1, le=1000)):
@@ -159,7 +172,7 @@ def generate_now(n: int = Query(20, ge=1, le=1000)):
             "departure": (now + timedelta(days=days_before)).isoformat(),
             "collected_ts": now,
             "days_before": days_before,
-            "price": price
+            "price": price,
         }
         docs.append(doc)
 
@@ -168,6 +181,7 @@ def generate_now(n: int = Query(20, ge=1, le=1000)):
         return {"inserted": len(docs)}
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": str(e)})
+
 
 @app.get("/health")
 def health():

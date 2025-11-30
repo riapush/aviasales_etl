@@ -51,15 +51,15 @@ services:
       retries: 5
       start_period: 10s
 
-  air_quality_app:
+  app:
     build:
-      context: ./air_quality_app
+      context: ./app
       dockerfile: Dockerfile
-    container_name: air_quality_app
+    container_name: app
     ports:
       - "8081:8081"
     volumes:
-      - ./air_quality_app:/app
+      - ./app:/app
     restart: unless-stopped
     depends_on:
       - mongodb

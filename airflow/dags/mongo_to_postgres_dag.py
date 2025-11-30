@@ -15,8 +15,12 @@ log = logging.getLogger(__name__)
 
 MONGO_HOST = os.environ.get("MONGO_HOST", "mongodb")
 MONGO_PORT = int(os.environ.get("MONGO_PORT", 27017))
-MONGO_USER = os.environ.get("MONGO_INITDB_ROOT_USERNAME") or os.environ.get("MONGO_USER")
-MONGO_PASSWORD = os.environ.get("MONGO_INITDB_ROOT_PASSWORD") or os.environ.get("MONGO_PASSWORD")
+MONGO_USER = os.environ.get("MONGO_INITDB_ROOT_USERNAME") or os.environ.get(
+    "MONGO_USER"
+)
+MONGO_PASSWORD = os.environ.get("MONGO_INITDB_ROOT_PASSWORD") or os.environ.get(
+    "MONGO_PASSWORD"
+)
 
 PG_HOST = os.environ.get("POSTGRES_ANALYTICS_HOST", "postgres_analytics")
 PG_DB = os.environ.get("POSTGRES_ANALYTICS_DB", "analytics")
@@ -24,11 +28,13 @@ PG_USER = os.environ.get("POSTGRES_ANALYTICS_USER", "pguser")
 PG_PASSWORD = os.environ.get("POSTGRES_ANALYTICS_PASSWORD", "pgpass")
 PG_PORT = int(os.environ.get("POSTGRES_ANALYTICS_PORT", 5432))
 
+
 def _make_mongo_client():
     uri = f"mongodb://{MONGO_USER}:{MONGO_PASSWORD}@{MONGO_HOST}:{MONGO_PORT}/?authSource=admin"
     client = MongoClient(uri, serverSelectionTimeoutMS=5000)
     client.admin.command("ping")
     return client
+
 
 def _make_pg_conn():
     conn = psycopg2.connect(
@@ -37,6 +43,7 @@ def _make_pg_conn():
     conn.autocommit = True
     return conn
 
+
 def extract_recent_from_mongo(window_hours: int = 3, **context):
     client = _make_mongo_client()
     col = client["aviation"]["prices"]
@@ -44,17 +51,20 @@ def extract_recent_from_mongo(window_hours: int = 3, **context):
     cursor = col.find({"collected_ts": {"$gte": cutoff}})
     rows = []
     for d in cursor:
-        rows.append({
-            "id": d["_id"],
-            "route": d.get("route"),
-            "carrier": d.get("carrier"),
-            "departure": d.get("departure"),
-            "collected_ts": d.get("collected_ts"),
-            "days_before": d.get("days_before"),
-            "price": d.get("price"),
-        })
+        rows.append(
+            {
+                "id": d["_id"],
+                "route": d.get("route"),
+                "carrier": d.get("carrier"),
+                "departure": d.get("departure"),
+                "collected_ts": d.get("collected_ts"),
+                "days_before": d.get("days_before"),
+                "price": d.get("price"),
+            }
+        )
     log.info("Extracted %s rows from Mongo (since %s)", len(rows), cutoff.isoformat())
     return rows
+
 
 def load_into_postgres(**context):
     ti = context["ti"]
@@ -65,7 +75,8 @@ def load_into_postgres(**context):
 
     conn = _make_pg_conn()
     cur = conn.cursor()
-    cur.execute("""
+    cur.execute(
+        """
         CREATE SCHEMA IF NOT EXISTS analytics;
         CREATE TABLE IF NOT EXISTS analytics.tickets (
             id TEXT PRIMARY KEY,
@@ -76,10 +87,19 @@ def load_into_postgres(**context):
             days_before INTEGER,
             price NUMERIC
         );
-    """)
+    """
+    )
 
     vals = [
-        (r["id"], r["route"], r["carrier"], r["departure"], r["collected_ts"], r["days_before"], r["price"])
+        (
+            r["id"],
+            r["route"],
+            r["carrier"],
+            r["departure"],
+            r["collected_ts"],
+            r["days_before"],
+            r["price"],
+        )
         for r in rows
     ]
 
@@ -89,29 +109,39 @@ def load_into_postgres(**context):
         ON CONFLICT (id) DO NOTHING;
     """
     try:
-        psycopg2.extras.execute_values(cur, insert_sql, vals, template=None, page_size=100)
+        psycopg2.extras.execute_values(
+            cur, insert_sql, vals, template=None, page_size=100
+        )
         log.info("Loaded %s rows into Postgres (attempted)", len(vals))
     finally:
         cur.close()
         conn.close()
     return {"inserted": len(vals)}
 
+
 def verify(**context):
     conn = _make_pg_conn()
     cur = conn.cursor()
-    cur.execute("SELECT COUNT(*) FROM analytics.tickets WHERE collected_ts >= (now() - INTERVAL '24 hours');")
+    cur.execute(
+        "SELECT COUNT(*) FROM analytics.tickets WHERE collected_ts >= (now() - INTERVAL '24 hours');"
+    )
     count = cur.fetchone()[0]
     cur.close()
     conn.close()
     log.info("Verify: rows in analytics.tickets (last 24h): %s", count)
     return {"rows_last_24h": count}
 
+
 with DAG(
     dag_id="mongo_to_postgres_elt",
     schedule_interval=None,
     start_date=days_ago(1),
     catchup=False,
-    default_args={"owner": "airflow", "retries": 1, "retry_delay": timedelta(minutes=2)},
+    default_args={
+        "owner": "airflow",
+        "retries": 1,
+        "retry_delay": timedelta(minutes=2),
+    },
     tags=["etl", "mongo", "postgres", "mock"],
 ) as dag:
 
