@@ -17,8 +17,8 @@ log = logging.getLogger(__name__)
 # MongoDB connection
 MONGO_HOST = os.environ.get("MONGO_HOST", "mongodb")
 MONGO_PORT = int(os.environ.get("MONGO_PORT", 27017))
-MONGO_USER = os.environ.get("MONGO_INITDB_ROOT_USERNAME") or os.environ.get("MONGO_USER")
-MONGO_PASSWORD = os.environ.get("MONGO_INITDB_ROOT_PASSWORD") or os.environ.get("MONGO_PASSWORD")
+MONGO_USER = os.environ.get("MONGO_INITDB_ROOT_USERNAME")
+MONGO_PASSWORD = os.environ.get("MONGO_INITDB_ROOT_PASSWORD")
 
 # PostgreSQL connection
 PG_HOST = os.environ.get("POSTGRES_ANALYTICS_HOST", "postgres_analytics")
