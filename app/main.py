@@ -92,7 +92,13 @@ def init_mongo_client(retries=10, delay=3):
 def get_current_weather() -> Dict[str, Any]:
     """Получение текущей погоды с OpenWeatherMap"""
     url = "https://api.openweathermap.org/data/2.5/weather"
-    params = {"lat": LAT, "lon": LON, "appid": OPENWEATHER_API_KEY, "units": "metric", "lang": "ru"}
+    params = {
+        "lat": LAT,
+        "lon": LON,
+        "appid": OPENWEATHER_API_KEY,
+        "units": "metric",
+        "lang": "ru",
+    }
 
     try:
         response = requests.get(url, params=params, timeout=10)

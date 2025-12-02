@@ -394,9 +394,13 @@ def calculate_accuracy_metrics(**context):
         actual_data = cur.fetchone()
 
         if actual_data:
-            temp_actual, humidity_actual, pressure_actual, weather_actual, verification_dt = (
-                actual_data
-            )
+            (
+                temp_actual,
+                humidity_actual,
+                pressure_actual,
+                weather_actual,
+                verification_dt,
+            ) = actual_data
 
             # Рассчитываем ошибки
             temp_error = temp_actual - temp_forecast
@@ -493,7 +497,7 @@ def generate_accuracy_report(**context):
             "avg_humidity_error_percent": round(float(avg_humidity_error or 0), 1),
             "avg_pressure_error_hpa": round(float(avg_pressure_error or 0), 1),
             "weather_type_accuracy_percent": round(weather_accuracy, 1),
-            "earliest_forecast": earliest_forecast.isoformat() if earliest_forecast else None,
+            "earliest_forecast": (earliest_forecast.isoformat() if earliest_forecast else None),
             "latest_forecast": latest_forecast.isoformat() if latest_forecast else None,
             "generated_at": datetime.utcnow().isoformat(),
         }
