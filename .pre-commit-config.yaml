@@ -1,0 +1,23 @@
+repos:
+  - repo: https://github.com/psf/black
+    rev: 24.8.0
+    hooks:
+      - id: black
+        args: [--line-length=100]
+        language_version: python3.13
+
+  - repo: https://github.com/pycqa/pylint
+    rev: v3.1.0
+    hooks:
+      - id: pylint
+        args:
+          - --rcfile=.pylintrc
+          - --fail-under=9.0
+        # Устанавливаем зависимости перед проверкой
+        additional_dependencies:
+          - "requests==2.31.0"
+          - "pymongo==4.4.0"
+          - "pydantic==1.10.23"
+          - "fastapi==0.95.2"
+          - "python-dotenv==1.0.0"
+          - "uvicorn[standard]==0.22.0"

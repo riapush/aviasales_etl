@@ -7,7 +7,6 @@ import time as _time
 from typing import List, Dict, Any
 import requests
 from fastapi import FastAPI, Query, HTTPException
-from fastapi.responses import JSONResponse
 from pymongo import MongoClient, errors
 from pydantic import BaseModel
 from dotenv import load_dotenv
@@ -93,19 +92,13 @@ def init_mongo_client(retries=10, delay=3):
 def get_current_weather() -> Dict[str, Any]:
     """Получение текущей погоды с OpenWeatherMap"""
     url = "https://api.openweathermap.org/data/2.5/weather"
-    params = {
-        "lat": LAT,
-        "lon": LON,
-        "appid": OPENWEATHER_API_KEY,
-        "units": "metric",
-        "lang": "ru"
-    }
-    
+    params = {"lat": LAT, "lon": LON, "appid": OPENWEATHER_API_KEY, "units": "metric", "lang": "ru"}
+
     try:
         response = requests.get(url, params=params, timeout=10)
         response.raise_for_status()
         data = response.json()
-        
+
         current_weather = {
             "city": data.get("name", CITY_NAME),
             "country": data.get("sys", {}).get("country", COUNTRY_CODE),
@@ -120,9 +113,9 @@ def get_current_weather() -> Dict[str, Any]:
             "weather_description": data.get("weather", [{}])[0].get("description"),
             "clouds": data.get("clouds", {}).get("all", 0),
             "visibility": data.get("visibility", 10000),
-            "collected_ts": datetime.utcnow()
+            "collected_ts": datetime.utcnow(),
         }
-        
+
         return current_weather
     except Exception as e:
         print(f"Error fetching current weather: {e}")
@@ -139,17 +132,17 @@ def get_forecast() -> List[Dict[str, Any]]:
         "appid": OPENWEATHER_API_KEY,
         "units": "metric",
         "lang": "ru",
-        "cnt": 16  # 48 часов с шагом 3 часа
+        "cnt": 16,  # 48 часов с шагом 3 часа
     }
-    
+
     try:
         response = requests.get(url, params=params, timeout=10)
         response.raise_for_status()
         data = response.json()
-        
+
         forecasts = []
         collection_time = datetime.utcnow()
-        
+
         for item in data.get("list", []):
             forecast = {
                 "city": data.get("city", {}).get("name", CITY_NAME),
@@ -165,10 +158,10 @@ def get_forecast() -> List[Dict[str, Any]]:
                 "weather_main": item.get("weather", [{}])[0].get("main"),
                 "weather_description": item.get("weather", [{}])[0].get("description"),
                 "clouds": item.get("clouds", {}).get("all", 0),
-                "pop": item.get("pop", 0)  # Probability of precipitation
+                "pop": item.get("pop", 0),  # Probability of precipitation
             }
             forecasts.append(forecast)
-        
+
         return forecasts
     except Exception as e:
         print(f"Error fetching forecast: {e}")
@@ -194,7 +187,7 @@ def mock_current_weather() -> Dict[str, Any]:
         "weather_description": random.choice(["ясно", "облачно", "легкий дождь", "снег"]),
         "clouds": random.randint(0, 100),
         "visibility": random.randint(5000, 20000),
-        "collected_ts": now
+        "collected_ts": now,
     }
 
 
@@ -203,29 +196,31 @@ def mock_forecast() -> List[Dict[str, Any]]:
     forecasts = []
     collection_time = datetime.utcnow()
     base_temp = 10 + 10 * random.random()
-    
+
     for hours_ahead in range(0, 49, 3):  # 0, 3, 6, ..., 48 часов
         forecast_time = collection_time + timedelta(hours=hours_ahead)
         # Температура меняется синусоидально в течение суток
         temp_change = 5 * random.random() * (1 if hours_ahead % 24 < 12 else -1)
-        
-        forecasts.append({
-            "city": CITY_NAME,
-            "country": COUNTRY_CODE,
-            "forecast_dt": int(forecast_time.timestamp()),
-            "collection_dt": collection_time,
-            "temp": round(base_temp + temp_change, 1),
-            "feels_like": round(base_temp + temp_change - random.uniform(0, 3), 1),
-            "pressure": random.randint(980, 1030),
-            "humidity": random.randint(40, 90),
-            "wind_speed": round(random.uniform(0, 10), 1),
-            "wind_deg": random.randint(0, 360),
-            "weather_main": random.choice(["Clear", "Clouds", "Rain", "Snow"]),
-            "weather_description": random.choice(["ясно", "облачно", "легкий дождь", "снег"]),
-            "clouds": random.randint(0, 100),
-            "pop": round(random.uniform(0, 0.8), 2)  # Вероятность осадков 0-80%
-        })
-    
+
+        forecasts.append(
+            {
+                "city": CITY_NAME,
+                "country": COUNTRY_CODE,
+                "forecast_dt": int(forecast_time.timestamp()),
+                "collection_dt": collection_time,
+                "temp": round(base_temp + temp_change, 1),
+                "feels_like": round(base_temp + temp_change - random.uniform(0, 3), 1),
+                "pressure": random.randint(980, 1030),
+                "humidity": random.randint(40, 90),
+                "wind_speed": round(random.uniform(0, 10), 1),
+                "wind_deg": random.randint(0, 360),
+                "weather_main": random.choice(["Clear", "Clouds", "Rain", "Snow"]),
+                "weather_description": random.choice(["ясно", "облачно", "легкий дождь", "снег"]),
+                "clouds": random.randint(0, 100),
+                "pop": round(random.uniform(0, 0.8), 2),  # Вероятность осадков 0-80%
+            }
+        )
+
     return forecasts
 
 
@@ -236,27 +231,21 @@ def collect_weather_data():
             # Сбор текущей погоды
             current_weather = get_current_weather()
             if current_weather:
-                current_collection.insert_one({
-                    "_id": str(uuid.uuid4()),
-                    **current_weather
-                })
+                current_collection.insert_one({"_id": str(uuid.uuid4()), **current_weather})
                 print(f"Collected current weather at {current_weather['collected_ts']}")
-            
+
             # Сбор прогноза
             forecasts = get_forecast()
             if forecasts:
                 forecast_docs = []
                 for forecast in forecasts:
-                    forecast_docs.append({
-                        "_id": str(uuid.uuid4()),
-                        **forecast
-                    })
+                    forecast_docs.append({"_id": str(uuid.uuid4()), **forecast})
                 forecast_collection.insert_many(forecast_docs)
                 print(f"Collected {len(forecasts)} forecast records")
-            
+
             # Ждем 1 час до следующего сбора
             _time.sleep(3600)
-            
+
         except Exception as e:
             print(f"Error in weather collection loop: {e}")
             _time.sleep(300)  # Ждем 5 минут при ошибке
@@ -274,10 +263,7 @@ def collect_current_weather():
     try:
         current_weather = get_current_weather()
         if current_weather:
-            result = current_collection.insert_one({
-                "_id": str(uuid.uuid4()),
-                **current_weather
-            })
+            result = current_collection.insert_one({"_id": str(uuid.uuid4()), **current_weather})
             return {"status": "success", "inserted_id": str(result.inserted_id)}
         return {"status": "error", "message": "No data received"}
     except Exception as e:
@@ -292,10 +278,7 @@ def collect_forecast():
         if forecasts:
             forecast_docs = []
             for forecast in forecasts:
-                forecast_docs.append({
-                    "_id": str(uuid.uuid4()),
-                    **forecast
-                })
+                forecast_docs.append({"_id": str(uuid.uuid4()), **forecast})
             result = forecast_collection.insert_many(forecast_docs)
             return {"status": "success", "inserted_count": len(result.inserted_ids)}
         return {"status": "error", "message": "No data received"}
@@ -311,30 +294,24 @@ def collect_all_weather():
         current_weather = get_current_weather()
         current_id = None
         if current_weather:
-            result = current_collection.insert_one({
-                "_id": str(uuid.uuid4()),
-                **current_weather
-            })
+            result = current_collection.insert_one({"_id": str(uuid.uuid4()), **current_weather})
             current_id = str(result.inserted_id)
-        
+
         # Сбор прогноза
         forecasts = get_forecast()
         forecast_count = 0
         if forecasts:
             forecast_docs = []
             for forecast in forecasts:
-                forecast_docs.append({
-                    "_id": str(uuid.uuid4()),
-                    **forecast
-                })
+                forecast_docs.append({"_id": str(uuid.uuid4()), **forecast})
             result = forecast_collection.insert_many(forecast_docs)
             forecast_count = len(result.inserted_ids)
-        
+
         return {
             "status": "success",
             "current_weather_inserted": current_id is not None,
             "current_weather_id": current_id,
-            "forecast_records_inserted": forecast_count
+            "forecast_records_inserted": forecast_count,
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -354,21 +331,22 @@ def get_latest_forecast():
     """Получение последнего прогноза"""
     # Находим время последнего сбора прогноза
     latest_collection = forecast_collection.find_one(
-        sort=[("collection_dt", -1)],
-        projection={"collection_dt": 1}
+        sort=[("collection_dt", -1)], projection={"collection_dt": 1}
     )
-    
+
     if not latest_collection:
         return []
-    
+
     # Получаем все прогнозы из последнего сбора
-    forecasts = list(forecast_collection.find(
-        {"collection_dt": latest_collection["collection_dt"]}
-    ).sort("forecast_dt", 1))
-    
+    forecasts = list(
+        forecast_collection.find({"collection_dt": latest_collection["collection_dt"]}).sort(
+            "forecast_dt", 1
+        )
+    )
+
     for doc in forecasts:
         doc["_id"] = str(doc["_id"])
-    
+
     return forecasts
 
 
@@ -376,13 +354,11 @@ def get_latest_forecast():
 def get_weather_history(hours: int = Query(24, ge=1, le=168)):
     """История текущей погоды за указанное количество часов"""
     cutoff = datetime.utcnow() - timedelta(hours=hours)
-    docs = list(current_collection.find(
-        {"collected_ts": {"$gte": cutoff}}
-    ).sort("collected_ts", 1))
-    
+    docs = list(current_collection.find({"collected_ts": {"$gte": cutoff}}).sort("collected_ts", 1))
+
     for doc in docs:
         doc["_id"] = str(doc["_id"])
-    
+
     return docs
 
 
@@ -391,23 +367,20 @@ def stats():
     """Статистика по собранным данным"""
     current_count = current_collection.count_documents({})
     forecast_count = forecast_collection.count_documents({})
-    
+
     # Средняя температура за последние 24 часа
     cutoff = datetime.utcnow() - timedelta(hours=24)
-    recent_temps = list(current_collection.find(
-        {"collected_ts": {"$gte": cutoff}},
-        {"temp": 1}
-    ))
-    
+    recent_temps = list(current_collection.find({"collected_ts": {"$gte": cutoff}}, {"temp": 1}))
+
     avg_temp = None
     if recent_temps:
         avg_temp = sum(doc["temp"] for doc in recent_temps) / len(recent_temps)
-    
+
     return {
         "current_weather_records": current_count,
         "forecast_records": forecast_count,
         "avg_temp_last_24h": round(avg_temp, 2) if avg_temp else None,
-        "collection_period_hours": 24
+        "collection_period_hours": 24,
     }
 
 

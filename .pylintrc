@@ -1,0 +1,47 @@
+﻿[MASTER]
+load-plugins=pylint.extensions.mccabe
+jobs=4
+
+[MESSAGES CONTROL]
+disable=
+    # Игнорируем ошибки импорта для внешних зависимостей
+    import-error,
+    # Отключаем некоторые проверки для удобства разработки
+    missing-docstring,
+    too-few-public-methods,
+    redefined-outer-name,
+    duplicate-code,
+    invalid-name,
+    broad-except,
+    too-many-arguments,
+    too-many-locals,
+    line-too-long,
+    unused-argument,
+    global-statement,
+    raise-missing-from,
+    unused-import,
+    wrong-import-order,
+    pointless-statement,
+    too-many-locals,
+    logging-fstring-interpolation,
+    unused-variable,
+    no-else-return
+
+[FORMAT]
+max-line-length=100
+
+[BASIC]
+good-names=i,j,k,ex,_,df,db,id,app,ti,conn,cur,context,err,e
+bad-names=foo,bar,baz
+
+[DESIGN]
+max-args=8
+max-locals=25
+max-returns=6
+max-branches=20
+max-statements=50
+max-parents=7
+
+[REPORTS]
+output-format=colorized
+score=yes
